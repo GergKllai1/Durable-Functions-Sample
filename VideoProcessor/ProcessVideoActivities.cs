@@ -10,6 +10,15 @@ namespace VideoProcessor
 {
     public static class ProcessVideoActivities
     {
+        [FunctionName("A_GetTranscodeBitrates")]
+        public static int[] GetTranscodeBitrates(
+            [ActivityTrigger] object input,
+            ILogger log)
+        {
+            return Environment.GetEnvironmentVariable("TranscodeBitRates")
+                .Split(",").Select(int.Parse).ToArray();
+        }
+
         [FunctionName("A_TranscodeVideo")]
         public static async Task<VideoFileInfo> TransocdeVideo(
             [ActivityTrigger] VideoFileInfo inputVideo,

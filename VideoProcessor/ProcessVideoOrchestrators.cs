@@ -29,31 +29,18 @@ namespace VideoProcessor
 
             try
             {
-                var bitRates = new[] { 1000, 2000, 3000, 4000 };
-                var transcodeTasks = new List<Task<VideoFileInfo>>();
-
-                foreach (var bitRate in bitRates)
-                {
-                    var info = new VideoFileInfo() { Location = videoLocation, BitRate = bitRate };
-                    var task = ctx.CallActivityAsync<VideoFileInfo>("A_TranscodeVideo", info);
-                    transcodeTasks.Add(task);
-                }
-
-                // Pararel execution of all tasks. Returns an array
-                var transcodeResults = await Task.WhenAll(transcodeTasks);
-
+                var transcodeResults =
+                    await ctx.CallSubOrchestratorAsync<VideoFileInfo[]>("O_TranscodeVideo", videoLocation);
                 transcodedLocation =
-                    transcodeResults
-                    .OrderByDescending(r => r.BitRate)
-                    .Select(r => r.Location)
-                    .FirstOrDefault();
+                  transcodeResults
+                  .OrderByDescending(r => r.BitRate)
+                  .Select(r => r.Location)
+                  .FirstOrDefault();
 
                 if (!ctx.IsReplaying)
                 {
                     log.LogInformation("About to call extract thumbnail activity");
                 }
-
-                //thumbnailLocation = await ctx.CallActivityAsync<string>("A_ExtractThumbnail", transcodedLocation);
 
                 thumbnailLocation = await ctx.CallActivityWithRetryAsync<string>("A_ExtractThumbnail",
                     new RetryOptions(TimeSpan.FromSeconds(3), 4)
@@ -93,6 +80,27 @@ namespace VideoProcessor
                     Message = e.Message
                 };
             }
+        }
+
+        [FunctionName("O_TranscodeVideo")]
+        public static async Task<VideoFileInfo[]> TranscodeVideo(
+            [OrchestrationTrigger] IDurableOrchestrationContext ctx,
+            ILogger log)
+        {
+            var videoLocation = ctx.GetInput<string>();
+            var bitRates = await ctx.CallActivityAsync<int[]>("A_GetTranscodeBitrates", null);
+            var transcodeTasks = new List<Task<VideoFileInfo>>();
+
+            foreach (var bitRate in bitRates)
+            {
+                var info = new VideoFileInfo() { Location = videoLocation, BitRate = bitRate };
+                var task = ctx.CallActivityAsync<VideoFileInfo>("A_TranscodeVideo", info);
+                transcodeTasks.Add(task);
+            }
+
+            // Pararel execution of all tasks. Returns an array
+            var transcodeResults = await Task.WhenAll(transcodeTasks);
+            return transcodeResults;
         }
     }
 }
