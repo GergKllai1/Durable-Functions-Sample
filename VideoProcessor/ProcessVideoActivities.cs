@@ -11,16 +11,23 @@ namespace VideoProcessor
     public static class ProcessVideoActivities
     {
         [FunctionName("A_TranscodeVideo")]
-        public static async Task<string> TransocdeVideo(
-            [ActivityTrigger] string inputVideo,
+        public static async Task<VideoFileInfo> TransocdeVideo(
+            [ActivityTrigger] VideoFileInfo inputVideo,
             ILogger log)
         {
 
-            log.LogInformation($"Transcoding {inputVideo}");
+            log.LogInformation($"Transcoding {inputVideo.Location} to {inputVideo.BitRate}");
             // simulate doing the activity
             await Task.Delay(5000);
 
-            return $"{Path.GetFileNameWithoutExtension(inputVideo)}-transcoded.mp4";
+            string transcodedLocation =  
+                $"{Path.GetFileNameWithoutExtension(inputVideo.Location)}-{inputVideo.BitRate}kbps.mp4";
+
+            return new VideoFileInfo
+            {
+                Location = transcodedLocation,
+                BitRate = inputVideo.BitRate
+            };
         }
 
         [FunctionName("A_ExtractThumbnail")]
