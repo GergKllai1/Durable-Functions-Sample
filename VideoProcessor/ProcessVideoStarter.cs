@@ -5,6 +5,7 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using System;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -31,7 +32,7 @@ namespace VideoProcessor
                 return new BadRequestObjectResult("Please pass in a video!");
             }
 
-            var orchestrationId = await starter.StartNewAsync("O_ProcessVideo", "videoprocessing", video);
+            var orchestrationId = await starter.StartNewAsync("O_ProcessVideo", Guid.NewGuid().ToString(), video);
 
             return starter.CreateCheckStatusResponse(req, orchestrationId);
         }
