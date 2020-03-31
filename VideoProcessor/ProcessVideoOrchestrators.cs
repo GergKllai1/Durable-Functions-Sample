@@ -26,6 +26,7 @@ namespace VideoProcessor
             string transcodedLocation = null;
             string thumbnailLocation = null;
             string withIntroLocation = null;
+            string approvalResult = "Unknown";
 
             try
             {
@@ -56,11 +57,29 @@ namespace VideoProcessor
 
                 withIntroLocation = await ctx.CallActivityAsync<string>("A_PrependIntro", transcodedLocation);
 
+                await ctx.CallActivityAsync("A_SendApprovalRequestEmail", new ApprovalInfo()
+                {
+                    OrchestrationId = ctx.InstanceId,
+                    VideoLocation = withIntroLocation
+                });
+
+                approvalResult = await ctx.WaitForExternalEvent<string>("ApprovalResult");
+
+                if (approvalResult == "Approved")
+                {
+                    await ctx.CallActivityAsync("A_PublishVideo", withIntroLocation);
+                }
+                else
+                {
+                    await ctx.CallActivityAsync("A_RejectVideo", withIntroLocation);
+                }
+
                 return new
                 {
                     Transcoded = transcodedLocation,
                     ThumbNail = thumbnailLocation,
-                    WithIntro = withIntroLocation
+                    WithIntro = withIntroLocation,
+                    ApprovalResult = approvalResult
                 };
 
             }
