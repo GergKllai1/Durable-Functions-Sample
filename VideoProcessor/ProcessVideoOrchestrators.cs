@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 
@@ -63,7 +64,31 @@ namespace VideoProcessor
                     VideoLocation = withIntroLocation
                 });
 
-                approvalResult = await ctx.WaitForExternalEvent<string>("ApprovalResult");
+                // An exemple of a running task without timeout 
+                // approvalResult = await ctx.WaitForExternalEvent<string>("ApprovalResult");
+
+                using (var cts = new CancellationTokenSource())
+                {
+                    // ctx saved dateTime has to be used to keep the orchestrator deterministic
+                    var timeoutAt = ctx.CurrentUtcDateTime.AddSeconds(30);
+                    var timeoutTask = ctx.CreateTimer(timeoutAt, cts.Token);
+                    var approvalTaks = ctx.WaitForExternalEvent<string>("ApprovalResult");
+
+                    var winner = await Task.WhenAny(approvalTaks, timeoutTask);
+
+                    if (winner == approvalTaks)
+                    {
+                        approvalResult = approvalTaks.Result;
+                        cts.Cancel(); // cancelling the timeout task
+                    }
+                    else
+                    {
+                        approvalResult = "Timed Out!";
+                    }
+                }
+
+               
+
 
                 if (approvalResult == "Approved")
                 {
