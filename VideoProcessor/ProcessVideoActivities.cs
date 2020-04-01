@@ -1,12 +1,10 @@
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using SendGrid.Helpers.Mail;
 using System;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace VideoProcessor
@@ -90,6 +88,7 @@ namespace VideoProcessor
 
             string host = Environment.GetEnvironmentVariable("Host");
 
+            // constructs the email attributes
             string functionAddress = $"{host}/api/SubmitVideoApproval/{approvalCode}";
             string approvedLink = functionAddress + "?result=Approved";
             string rejectedLink = functionAddress + "?result=Rejected";
@@ -98,6 +97,7 @@ namespace VideoProcessor
                 + $"<a href=\"{approvedLink}\">Approve</a><br>"
                 + $"<a href=\"{rejectedLink}\">Reject</a>";
 
+            // appends attributes to email, sends with sendgrid api
             message = new SendGridMessage();
             message.AddTo(Environment.GetEnvironmentVariable("ApproverEmail"));
             message.AddContent("text/html", emailBody);

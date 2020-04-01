@@ -17,6 +17,7 @@ namespace VideoProcessor
             [OrchestrationTrigger] IDurableOrchestrationContext ctx,
             ILogger log)
         {
+            // get the input passed from the StartNewAsync() function
             var videoLocation = ctx.GetInput<string>();
 
             if (!ctx.IsReplaying)
@@ -31,6 +32,7 @@ namespace VideoProcessor
 
             try
             {
+                // Activity to return the bitrates
                 var transcodeResults =
                     await ctx.CallSubOrchestratorAsync<VideoFileInfo[]>("O_TranscodeVideo", videoLocation);
                 transcodedLocation =
@@ -39,11 +41,13 @@ namespace VideoProcessor
                   .Select(r => r.Location)
                   .FirstOrDefault();
 
+                // Durable functions api keeps track what activites has been performed and what has not been
                 if (!ctx.IsReplaying)
                 {
                     log.LogInformation("About to call extract thumbnail activity");
                 }
 
+                // Call an activity with retry options
                 thumbnailLocation = await ctx.CallActivityWithRetryAsync<string>("A_ExtractThumbnail",
                     new RetryOptions(TimeSpan.FromSeconds(3), 4)
                     {
@@ -57,7 +61,8 @@ namespace VideoProcessor
                 }
 
                 withIntroLocation = await ctx.CallActivityAsync<string>("A_PrependIntro", transcodedLocation);
-
+               
+                // Call an activity without retrying
                 await ctx.CallActivityAsync("A_SendApprovalRequestEmail", new ApprovalInfo()
                 {
                     OrchestrationId = ctx.InstanceId,
@@ -71,9 +76,12 @@ namespace VideoProcessor
                 {
                     // ctx saved dateTime has to be used to keep the orchestrator deterministic
                     var timeoutAt = ctx.CurrentUtcDateTime.AddSeconds(30);
+                    // Puts the orchestration to sleep for x amount of time. Takes CancellationToken as 
+                    // a secondary argument, to be able to stop it. CancellationToken.None can be passed if not.
                     var timeoutTask = ctx.CreateTimer(timeoutAt, cts.Token);
                     var approvalTaks = ctx.WaitForExternalEvent<string>("ApprovalResult");
 
+                    // Passes in the result of any of the tasks that has been executed first
                     var winner = await Task.WhenAny(approvalTaks, timeoutTask);
 
                     if (winner == approvalTaks)
@@ -134,10 +142,11 @@ namespace VideoProcessor
             {
                 var info = new VideoFileInfo() { Location = videoLocation, BitRate = bitRate };
                 var task = ctx.CallActivityAsync<VideoFileInfo>("A_TranscodeVideo", info);
+                // Creates a list of tasks
                 transcodeTasks.Add(task);
             }
 
-            // Pararel execution of all tasks. Returns an array
+            // Pararel execution of all tasks. Returns an array. Wait for all tasks to be executed
             var transcodeResults = await Task.WhenAll(transcodeTasks);
             return transcodeResults;
         }

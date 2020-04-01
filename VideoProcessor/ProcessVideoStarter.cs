@@ -39,6 +39,7 @@ namespace VideoProcessor
             return starter.CreateCheckStatusResponse(req, orchestrationId);
         }
 
+        // Orchestration to be called by the email
         [FunctionName("SubmitVideoApproval")]
         public static async Task<IActionResult> SubmitVideoApproval(
             [HttpTrigger(AuthorizationLevel.Anonymous, 
@@ -61,6 +62,8 @@ namespace VideoProcessor
             return new OkResult();
         }
 
+        // Ethernal orchestration sample, this task will repeat itself until termanited by the
+        // durable functions API, using the termination link returned by the response
         [FunctionName("StartPeriodicTask")]
         public static async Task<IActionResult> startPeriodicTask(
             [HttpTrigger(AuthorizationLevel.Function, "get", Route = null)]
