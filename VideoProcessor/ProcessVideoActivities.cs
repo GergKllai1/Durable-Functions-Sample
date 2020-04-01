@@ -32,7 +32,7 @@ namespace VideoProcessor
             // simulate doing the activity
             await Task.Delay(5000);
 
-            string transcodedLocation =  
+            string transcodedLocation =
                 $"{Path.GetFileNameWithoutExtension(inputVideo.Location)}-{inputVideo.BitRate}kbps.mp4";
 
             return new VideoFileInfo
@@ -124,6 +124,14 @@ namespace VideoProcessor
             log.LogInformation($"Recejting {inputVideo}");
 
             await Task.Delay(1000);
+        }
+
+        [FunctionName("A_PeriodicActivity")]
+        public static void PeriodicActivity(
+            [ActivityTrigger] int timesRun,
+            ILogger log)
+        {
+            log.LogWarning($"Running the periodic activity, times run = {timesRun}");
         }
 
         [FunctionName("A_Cleanup")]

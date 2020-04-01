@@ -86,10 +86,6 @@ namespace VideoProcessor
                         approvalResult = "Timed Out!";
                     }
                 }
-
-               
-
-
                 if (approvalResult == "Approved")
                 {
                     await ctx.CallActivityAsync("A_PublishVideo", withIntroLocation);
@@ -106,7 +102,6 @@ namespace VideoProcessor
                     WithIntro = withIntroLocation,
                     ApprovalResult = approvalResult
                 };
-
             }
             catch (Exception e)
             {
@@ -145,6 +140,22 @@ namespace VideoProcessor
             // Pararel execution of all tasks. Returns an array
             var transcodeResults = await Task.WhenAll(transcodeTasks);
             return transcodeResults;
+        }
+
+        [FunctionName("O_PeriodicTask")]
+        public static async Task<int> PeriodicTask(
+            [OrchestrationTrigger] IDurableOrchestrationContext ctx,
+            ILogger log)
+        {
+            int timesRun = ctx.GetInput<int>();
+            timesRun++;
+            if (!ctx.IsReplaying)
+                log.LogInformation($"Starting the PeriodicTask activity {ctx.InstanceId}, {timesRun}");
+            await ctx.CallActivityAsync("A_PeriodicActivity", timesRun);
+            var nextRun = ctx.CurrentUtcDateTime.AddSeconds(30);
+            await ctx.CreateTimer(nextRun, CancellationToken.None);
+            ctx.ContinueAsNew(timesRun);
+            return timesRun;
         }
     }
 }

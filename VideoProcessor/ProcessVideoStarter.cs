@@ -32,8 +32,10 @@ namespace VideoProcessor
                 return new BadRequestObjectResult("Please pass in a video!");
             }
 
+            // Starts the orchestration
             var orchestrationId = await starter.StartNewAsync("O_ProcessVideo", Guid.NewGuid().ToString(), video);
 
+            // Returns the RESTful response
             return starter.CreateCheckStatusResponse(req, orchestrationId);
         }
 
@@ -57,6 +59,17 @@ namespace VideoProcessor
             await client.RaiseEventAsync(approval.OrchestrationId, "ApprovalResult", result);
 
             return new OkResult();
+        }
+
+        [FunctionName("StartPeriodicTask")]
+        public static async Task<IActionResult> startPeriodicTask(
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = null)]
+            HttpRequest req,
+            [DurableClient] IDurableOrchestrationClient client,
+            ILogger log)
+        {
+            var instanceId = await client.StartNewAsync("O_PeriodicTask", Guid.NewGuid().ToString(), 0);
+            return client.CreateCheckStatusResponse(req, instanceId);
         }
     }
 }
